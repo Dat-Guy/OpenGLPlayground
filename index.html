@@ -5,7 +5,6 @@
     </head>
 
     <body>
-        <img src="Texture.png">
         <canvas id="glcanvas" width="640" height="480"></canvas>
     </body>
     <script src="gl-matrix.js"></script>
@@ -129,6 +128,7 @@
             gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, pixel);
 
             const image = new Image();
+            image.crossOrigin = "anonymous";
             
             image.onload = function(){
                 gl.bindTexture(gl.TEXTURE_2D, texture);
