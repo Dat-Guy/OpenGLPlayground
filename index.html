@@ -10,6 +10,8 @@
     <script src="gl-matrix.js"></script>
     <script>
         var cubeRotation = 0.0;
+        const numLayers = 50; //MUST be even; sorry .ω.
+        const numSlices = 1000;
         main();
         //
         // start here
@@ -64,7 +66,7 @@
 
             const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
 
-            const texture = loadTexture(gl, "Texture.png");
+            const texture = loadTexture(gl, "2k_earth_daymap.jpg");
             
             const programInfo = {
                 program: shaderProgram,
@@ -153,8 +155,8 @@
                 if (isPowerOf2(image.width) && isPowerOf2(image.height)){
                     gl.generateMipmap(gl.TEXTURE_2D);
                 } else {
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
                     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
                 }
             }
@@ -174,124 +176,41 @@
             const indexBuffer = gl.createBuffer();
             const normalBuffer = gl.createBuffer();
 
-            const positions = [
-                // Front face
-                -1.0, -1.0,  1.0,
-                1.0, -1.0,  1.0,
-                1.0,  1.0,  1.0,
-                -1.0,  1.0,  1.0,
+            var positions = [];
+            var textureCoordinates = [];
+            var indices = [];
 
-                // Back face
-                -1.0, -1.0, -1.0,
-                -1.0,  1.0, -1.0,
-                1.0,  1.0, -1.0,
-                1.0, -1.0, -1.0,
+            var lat = 0;
+            var lon = 0;
 
-                // Top face
-                -1.0,  1.0, -1.0,
-                -1.0,  1.0,  1.0,
-                1.0,  1.0,  1.0,
-                1.0,  1.0, -1.0,
+            for (var i = 0; i < numLayers + 1; i++){
+                for (var j = 0; j < numSlices; j++){
+                    lat = Math.PI / 2 * (1 - 2 * i / numLayers);
+                    lon = Math.PI * 2 * j / numSlices;
+                    positions[i*numSlices*3+j*3] = Math.cos(lat) * Math.cos(lon);
+                    positions[i*numSlices*3+j*3+1] = Math.sin(lat);
+                    positions[i*numSlices*3+j*3+2] = Math.cos(lat) * Math.sin(Math.PI * 2 * j / numSlices);
+                    
+                    textureCoordinates[i*numSlices*2+j*2] = j / numSlices;
+                    textureCoordinates[i*numSlices*2+j*2+1] = i / numLayers;
+                }
+            }
 
-                // Bottom face
-                -1.0, -1.0, -1.0,
-                1.0, -1.0, -1.0,
-                1.0, -1.0,  1.0,
-                -1.0, -1.0,  1.0,
+            for (var i = 0; i < numLayers; i++){
+                for (var j = 0; j < numSlices; j++){
+                    indices[i*numSlices*6+j*6] = i*numSlices+j;
+                    indices[i*numSlices*6+j*6+1] = (i+1)*numSlices+j;
+                    indices[i*numSlices*6+j*6+2] = (i+1)*numSlices+j+1 - (j == numSlices - 1 ? numSlices : 0);
+                    indices[i*numSlices*6+j*6+3] = i*numSlices+j;
+                    indices[i*numSlices*6+j*6+4] = i*numSlices+j+1 - (j == numSlices - 1 ? numSlices : 0);
+                    indices[i*numSlices*6+j*6+5] = (i+1)*numSlices+j+1 - (j == numSlices - 1 ? numSlices : 0);
+                }
+            }
 
-                // Right face
-                1.0, -1.0, -1.0,
-                1.0,  1.0, -1.0,
-                1.0,  1.0,  1.0,
-                1.0, -1.0,  1.0,
+            console.log(positions);
+            console.log(textureCoordinates);
+            console.log(indices);
 
-                // Left face
-                -1.0, -1.0, -1.0,
-                -1.0, -1.0,  1.0,
-                -1.0,  1.0,  1.0,
-                -1.0,  1.0, -1.0,
-            ];
-
-            const textureCoordinates = [
-                // Front
-                0.0,  0.0,
-                1.0,  0.0,
-                1.0,  1.0,
-                0.0,  1.0,
-                // Back
-                0.0,  0.0,
-                1.0,  0.0,
-                1.0,  1.0,
-                0.0,  1.0,
-                // Top
-                0.0,  0.0,
-                1.0,  0.0,
-                1.0,  1.0,
-                0.0,  1.0,
-                // Bottom
-                0.0,  0.0,
-                1.0,  0.0,
-                1.0,  1.0,
-                0.0,  1.0,
-                // Right
-                0.0,  0.0,
-                1.0,  0.0,
-                1.0,  1.0,
-                0.0,  1.0,
-                // Left
-                0.0,  0.0,
-                1.0,  0.0,
-                1.0,  1.0,
-                0.0,  1.0,
-            ];
-
-            const indices = [
-                0,   1,  2,     0,   2,  3,     //Front
-                4,   5,  6,     4,   6,  7,     //Back
-                8,   9, 10,     8,  10, 11,     //Top
-                12, 13, 14,     12, 14, 15,     //Bottom
-                16, 17, 18,     16, 18, 19,     //Right
-                20, 21, 22,     20, 22, 23,     //Left
-            ];
-
-            const vertexNormals = [
-                // Front
-                0.0,  0.0,  1.0,
-                0.0,  0.0,  1.0,
-                0.0,  0.0,  1.0,
-                0.0,  0.0,  1.0,
-
-                // Back
-                0.0,  0.0, -1.0,
-                0.0,  0.0, -1.0,
-                0.0,  0.0, -1.0,
-                0.0,  0.0, -1.0,
-
-                // Top
-                0.0,  1.0,  0.0,
-                0.0,  1.0,  0.0,
-                0.0,  1.0,  0.0,
-                0.0,  1.0,  0.0,
-
-                // Bottom
-                0.0, -1.0,  0.0,
-                0.0, -1.0,  0.0,
-                0.0, -1.0,  0.0,
-                0.0, -1.0,  0.0,
-
-                // Right
-                1.0,  0.0,  0.0,
-                1.0,  0.0,  0.0,
-                1.0,  0.0,  0.0,
-                1.0,  0.0,  0.0,
-
-                // Left
-                -1.0,  0.0,  0.0,
-                -1.0,  0.0,  0.0,
-                -1.0,  0.0,  0.0,
-                -1.0,  0.0,  0.0
-            ];
-            
             gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
@@ -302,7 +221,8 @@
             gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexNormals), gl.STATIC_DRAW);
+            //Note: A sphere is a special case where the vertex normals are the same as the positions, which saves us some pre-processing.
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
             return {
                 position: positionBuffer,
@@ -432,7 +352,7 @@
             //gl.drawArrays(gl.TRIANGLE_STRIP, offset, vertexCount);
             {
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-                const vertexCount = 36;
+                const vertexCount = numLayers*numSlices*6;
                 const type = gl.UNSIGNED_SHORT;
                 const offset = 0;
                 gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
